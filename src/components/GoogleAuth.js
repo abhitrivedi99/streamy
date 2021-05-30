@@ -1,51 +1,41 @@
-import React, { Component } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { connect } from 'react-redux'
 import { signIn, signOut } from '../actions'
 
 const KEY =
 	'877762532052-dt6mahbefgpiuup3u7e1gcd9p7qdaol5.apps.googleusercontent.com'
 
-class GoogleAuth extends Component {
-	componentDidMount() {
-		window.gapi.load('client:auth2', () => {
-			window.gapi.client
-				.init({
-					clientId: KEY,
-					scope: 'email',
-				})
-				.then(() => {
-					console.log('Success')
-					this.auth = window.gapi.auth2.getAuthInstance()
-					this.onAuthChange(this.auth.isSignedIn.get())
-					this.auth.isSignedIn.listen(this.onAuthChange)
-				})
-		})
+const GoogleAuth = (props) => {
+	const auth = useRef('')
+	const { signIn, signOut, isSignedIn } = props
+
+	const onAuthChange = useCallback(
+		(isSignedIn) => {
+			if (isSignedIn) {
+				signIn(auth.current.currentUser.get().getId())
+			} else {
+				signOut()
+			}
+		},
+		[signIn, signOut],
+	)
+
+	const onSignInClick = () => {
+		auth.current.signIn()
 	}
 
-	onAuthChange = (isSignedIn) => {
-		if (isSignedIn) {
-			this.props.signIn(this.auth.currentUser.get().getId())
-		} else {
-			this.props.signOut()
-		}
+	const onSignOutClick = () => {
+		auth.current.signOut()
 	}
 
-	onSignInClick = () => {
-		this.auth.signIn()
-	}
-
-	onSignOutClick = () => {
-		this.auth.signOut()
-	}
-
-	renderAuthButton() {
-		if (this.props.isSignedIn === null) {
+	const renderAuthButton = () => {
+		if (isSignedIn === null) {
 			return null
-		} else if (this.props.isSignedIn) {
+		} else if (isSignedIn) {
 			return (
 				<button
 					className="ui red google button"
-					onClick={this.onSignOutClick}
+					onClick={onSignOutClick}
 				>
 					<i className="google icon" />
 					Sign Out
@@ -55,7 +45,7 @@ class GoogleAuth extends Component {
 			return (
 				<button
 					className="ui white google button"
-					onClick={this.onSignInClick}
+					onClick={onSignInClick}
 				>
 					<i className="google icon" />
 					Sign in with Google
@@ -64,9 +54,23 @@ class GoogleAuth extends Component {
 		}
 	}
 
-	render() {
-		return <div>{this.renderAuthButton()}</div>
-	}
+	useEffect(() => {
+		window.gapi.load('client:auth2', () => {
+			window.gapi.client
+				.init({
+					clientId: KEY,
+					scope: 'email',
+				})
+				.then(() => {
+					console.log('Success')
+					auth.current = window.gapi.auth2.getAuthInstance()
+					onAuthChange(auth.current.isSignedIn.get())
+					auth.current.isSignedIn.listen(onAuthChange)
+				})
+		})
+	}, [onAuthChange])
+
+	return <div>{renderAuthButton()}</div>
 }
 
 const mapStateToProps = (state) => {
