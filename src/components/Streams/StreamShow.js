@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import flv from 'flv.js'
 
 import { fetchStream } from '../../actions'
 
@@ -11,9 +12,25 @@ const StreamShow = ({ match }) => {
 
 	let stream = streams[id]
 
+	const videoRef = useRef()
+
 	useEffect(() => {
 		dispatch(fetchStream(id))
 	}, [dispatch, id])
+
+	useEffect(() => {
+		const flvPlayer = flv.createPlayer({
+			type: 'flv',
+			url: `http://localhost:8000/live/${id}.flv`,
+		})
+
+		if (stream) {
+			flvPlayer.attachMediaElement(videoRef.current)
+			flvPlayer.load()
+		}
+
+		return () => (stream ? flvPlayer.destroy() : null)
+	}, [dispatch, id, stream])
 
 	const renderList = () => {
 		if (!stream) {
@@ -21,6 +38,7 @@ const StreamShow = ({ match }) => {
 		} else {
 			return (
 				<div>
+					<video ref={videoRef} style={{ width: '100%' }} controls={true} />
 					<h1>{stream.title}</h1>
 					<h3 className="content">{stream.description}</h3>
 				</div>
@@ -28,12 +46,7 @@ const StreamShow = ({ match }) => {
 		}
 	}
 
-	return (
-		<div>
-			Stream Show
-			{renderList()}
-		</div>
-	)
+	return <div>{renderList()}</div>
 }
 
 export default StreamShow
